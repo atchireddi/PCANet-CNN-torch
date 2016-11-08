@@ -54,26 +54,26 @@ function load_data(trsize,tesize)
 	trainData.data = trainData.data:reshape(trsize,3,32,32)
 	testData.data = testData.data:reshape(tesize,3,32,32)
 
-	-- create val data
-	idx = torch.randperm(trsize)
-	tr_idx = idx[{ {1,math.floor(trsize*0.9)}   }]
-	val_idx = idx[{  {math.floor(trsize*0.9)+1,trsize}   }]
-	ValData = {}
-	ValData.data = trainData.data:index(1,val_idx:long())
-	ValData.labels = trainData.labels:index(1,val_idx:long())
-	print(ValData)
+	-- -- create val data
+	-- idx = torch.randperm(trsize)
+	-- tr_idx = idx[{ {1,math.floor(trsize*0.9)}   }]
+	-- val_idx = idx[{  {math.floor(trsize*0.9)+1,trsize}   }]
+	-- ValData = {}
+	-- ValData.data = trainData.data:index(1,val_idx:long())
+	-- ValData.labels = trainData.labels:index(1,val_idx:long())
+	-- print(ValData)
 
-	trainData.data = trainData.data:index(1,tr_idx:long())
-	trainData.labels = trainData.labels:index(1,tr_idx:long())
+	-- trainData.data = trainData.data:index(1,tr_idx:long())
+	-- trainData.labels = trainData.labels:index(1,tr_idx:long())
 
-	trsize = tr_idx:size(1)
-	valsize = val_idx:size(1)
+	-- trsize = tr_idx:size(1)
+	-- valsize = val_idx:size(1)
 
-	return trainData,ValData, testData
+	return trainData, testData
 end
 
 
-function train(options, trainData, ValData, testData)
+function train(options, trainData, testData)
 	
 
 	-- 1. Training (or loading) PCANet
@@ -99,22 +99,24 @@ function train(options, trainData, ValData, testData)
 	local nInputDim = tmpf:size(1)
 
 
-	-- 2. training NN
-	-- if paths.filep("NN.t7") then 
+	-- 2. training the classifier
+	if not paths.filep("model/classifier.t7") then
+		classifier = Classifier(options)
+	else
+		print ("loading " .. "`add names`" .. "...")
+		classifier = torch.load("model/classifier.t7")
+	end
+	net = classifier.net
+
 	timer:reset()
-	print ("training NN")
-	local model = nn.Sequential()
-	model:add(nn.Linear(nInputDim, 10)) 
-	model:add(nn.LogSoftMax())
-	local criterion = nn.ClassNLLCriterion() -- Negative log-likelihood criterion.
+	print ("training...")
+
 	-- 2. Select a batch of data and pass it through PCA filter first, then linear layer 
 	print ("start momentum SGD")
 	-- Go over the training data this number of times.
-	local params, gradParams = model:getParameters() -- return 2 tensors
+	local params, gradParams = net:getParameters() -- return 2 tensors
 	local velocityParams = torch.zeros(gradParams:size())
 
-	-- local train_features = pcanet:PCANet_FeaExt(trainData.data)
-	-- local test_features = pcanet:PCANet_FeaExt(testData.data)
 
     for epoch = 1, options.max_epochs do
         local sum_loss = 0
@@ -137,7 +139,7 @@ function train(options, trainData, ValData, testData)
             assert(inputs:size(2)==nInputDim,"dim not match")
 
             -- print ("1.2 Perform the forward pass (prediction mode).")
-            local predictions = model:forward(inputs)
+            local predictions = net:forward(inputs)
             
             -- print("1.3 Evaluate results")
             for i = 1, predictions:size(1) do
@@ -148,10 +150,10 @@ function train(options, trainData, ValData, testData)
 
             -- print("1.4 Perform the backward pass (compute derivatives)")
             -- This zeroes-out all the parameters inside the model pointed by variable params.
-            model:zeroGradParameters()
+            net:zeroGradParameters()
             -- This internally computes the gradients with respect to the parameters pointed by gradParams.
             local gradPredictions = criterion:backward(predictions, labels)
-            model:backward(inputs, gradPredictions)
+            net:backward(inputs, gradPredictions)
 
             -- print ("1.5 Momentum update")
 			-- v = mu * v - options.learning_rate * dx -- integrate velocity
@@ -169,23 +171,24 @@ function train(options, trainData, ValData, testData)
 
         
         -- print("after each epoch, evaluate the accuracy for the val data")
-        local validation_accuracy = 0
-        model:evaluate() -- turn on the evaluation mode
+        -- local validation_accuracy = 0
+        -- net:evaluate() -- turn on the evaluation mode
 
-        -- Perform the forward pass (prediction mode).
-        local predictions = model:forward(pcanet:PCANet_FeaExt(ValData.data))
-        -- evaluate results.
-        for i = 1, predictions:size(1) do
-            local _, predicted_label = predictions[i]:max(1)
-            if predicted_label[1] == ValData.labels[i] then validation_accuracy = validation_accuracy + 1 end
-        end
+        -- -- Perform the forward pass (prediction mode).
+        -- local predictions = net:forward(pcanet:PCANet_FeaExt(ValData.data))
+        -- -- evaluate results.
+        -- for i = 1, predictions:size(1) do
+        --     local _, predicted_label = predictions[i]:max(1)
+        --     if predicted_label[1] == ValData.labels[i] then validation_accuracy = validation_accuracy + 1 end
+        -- end
 
-        validation_accuracy = validation_accuracy / (ValData.data:size(1))
-        print(('\n validation accuracy at epoch = %d is %.4f'):format(epoch, validation_accuracy))
+        -- validation_accuracy = validation_accuracy / (ValData.data:size(1))
+        -- print(('\n validation accuracy at epoch = %d is %.4f'):format(epoch, validation_accuracy))
 
 
-        print("learning rate decay")
+        
         options.learning_rate = options.learning_rate * options.learning_rate_decay
+        print("learning rate decay: learning_rate is " .. options.learning_rate)
         options.learning_rate = math.max(options.learning_rate,0.0001)
 
         if epoch % 5==0 then
@@ -243,6 +246,8 @@ cmd:option('-HistBlockSize','{8,6}', '')
 cmd:option('-BlkOverLapRatio',0.5, '')
 cmd:option('MaxSamples',100000)
 
+-- model 
+cmd:option('-model','SVM', 'either SVM or CNN')
 
 -- optimization
 cmd:option('-learning_rate',1,'starting learning rate')
@@ -259,8 +264,8 @@ cmd:option('-max_epochs',25,'number of full passes through the training data')
 cmd:option('-seed',3435,'torch manual random number generator seed')
 cmd:option('-print_every',500,'how many steps/minibatches between printing out the loss')
 cmd:option('-save_every', 5, 'save every n epochs')
-cmd:option('-checkpoint_dir', 'cv', 'output directory where checkpoints get written')
-cmd:option('-savefile','char','filename to autosave the checkpont to. Will be inside checkpoint_dir/')
+-- cmd:option('-checkpoint_dir', 'cv', 'output directory where checkpoints get written')
+-- cmd:option('-savefile','char','filename to autosave the checkpont to. Will be inside checkpoint_dir/')
 
 
 -- GPU/CPU

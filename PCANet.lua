@@ -25,7 +25,7 @@ function PCANet:__init(options)
 end
 
 
---  Randomly select a MaxSamples patches, and extract the first NumFilter PCA filters
+--  Randomly select a MaxSamples Npatches, and extract the first NumFilter PCA filters
 function PCANet:PCA_FilterBank(InImgs,stage, MaxSamples)
     --[[ 
       InImgs must be a 4D tensor N,C,W,H
@@ -95,7 +95,7 @@ function PCANet:PCANet_train(InImgs,MaxSamples)
     local MaxSamples = MaxSamples or 100000
 
     local N = InImgs:size(1)
-    local OutImgs = InImgs:clone()
+    local OutImgs = InImgs
     self.V = {} -- when training the net, reset the filters
     for stage = 1,self.NumStages do
         print(string.format("Computing PCA filter bank and its outputs at stage %d ...", stage))
@@ -103,7 +103,7 @@ function PCANet:PCANet_train(InImgs,MaxSamples)
         table.insert(self.V,tmpV)
 
         if stage~=self.NumStages then
-            OutImgs= self:PCA_output(OutImgs,stage)
+            OutImgs = self:PCA_output(OutImgs,stage)
         end
     end
     -- return self.V
@@ -111,7 +111,7 @@ function PCANet:PCANet_train(InImgs,MaxSamples)
 end
 
 function PCANet:PCA_FilterBank_viz()
-
+    
 end
 
 -- only applied to n_stage = 2
@@ -158,7 +158,8 @@ function PCANet:HashingHist(OutImg)
                 if i==m then endi = W end 
                 if j==n then endj = H end
 
-                local patch_ij = output[{  {l},{},{ starti,endi  }  ,{startj,endj}  }]:clone() -- the ij th patch
+                -- local patch_ij = output[{  {l},{},{ starti,endi  }  ,{startj,endj}  }]:clone() -- the ij th patch
+                local patch_ij = output[{  {l},{},{ starti,endi  }  ,{startj,endj}  }]
                 local f_ij = torch.histc(patch_ij, histsize, 0, histsize-1)      -- the feature of ij the patch
                 if not f then
                     f = f_ij
@@ -172,8 +173,7 @@ function PCANet:HashingHist(OutImg)
     return f 
 end
 
--- --  process a single image, transform raw image to final representation f, given the PCAFilter V and Blk_size
--- function PCANet:PCANet_FeaExt(PCANet, InImg, V, Blk_size)
+-- process a single image, transform raw image to final representation f, given the PCAFilter V and Blk_size
 function PCANet:PCANet_FeaExt_single_input(InImg)
 	assert(#self.V==self.NumStages,"PCANet must be trained first")
 	-- InImg has size (C,W,H)
