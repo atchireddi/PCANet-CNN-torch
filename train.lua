@@ -13,10 +13,9 @@ function load_data(trsize,tesize)
 
 	-- download dataset
 	if not paths.dirp('cifar-10-batches-t7') then
-	   print ("dataset not found, downloading the dataset...")
+	   print ("dataset not found, downloading and uncompressing the dataset...")
 	   local www = 'http://torch7.s3-website-us-east-1.amazonaws.com/data/cifar-10-torch.tar.gz'
 	   local tar = paths.basename(www)
-	   print ("uncompressing...")
 	   os.execute('wget ' .. www .. '; '.. 'tar xvf ' .. tar)
 	end
 
@@ -33,7 +32,6 @@ function load_data(trsize,tesize)
 	   trainData.labels[{ {i*10000+1, (i+1)*10000} }] = subset.labels
 	end
 	trainData.labels = trainData.labels + 1
-
 
 
 	subset = torch.load('cifar-10-batches-t7/test_batch.t7', 'ascii')
@@ -68,12 +66,13 @@ function load_data(trsize,tesize)
 
 	-- trsize = tr_idx:size(1)
 	-- valsize = val_idx:size(1)
+	-- return trainData, ValData, testData
 
 	return trainData, testData
 end
 
 
-function train(options, trainData, testData)
+function train(options, trainData, testData, preprocess)
 	
 
 	-- 1. Training (or loading) PCANet
@@ -110,6 +109,8 @@ function train(options, trainData, testData)
 
 	timer:reset()
 	print ("training...")
+
+
 
 	-- 2. Select a batch of data and pass it through PCA filter first, then linear layer 
 	print ("start momentum SGD")
@@ -195,7 +196,6 @@ function train(options, trainData, testData)
         	torch.save("model.t7",model)
         end
         collectgarbage()
-
     end
 
     print('Time elapsed for training NN: ' .. timer:time().real .. ' seconds')
