@@ -168,7 +168,7 @@ function train(options, trainData, testData, preprocess)
 
             xlua.progress(i,n_batches)
             if i % 100 == 0 then  
-                print(('train epoch=%d, iteration=%d, avg-loss=%.6f, avg-accuracy = %.2f')
+                print(('train epoch=%d, iteration=%d, avg-loss=%.6f, avg-accuracy = %.4f')
                     :format(epoch, i, sum_loss / i, correct / (i * options.batch_size)))
             end
         end
