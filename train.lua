@@ -1,5 +1,6 @@
 require 'torch'
 require 'PCANet'
+require 'Classifier'
 local xlua = require 'xlua'
 local util = require "util"
 local nn = require 'nn'
@@ -52,40 +53,36 @@ function load_data(trsize,tesize)
 	trainData.data = trainData.data:reshape(trsize,3,32,32)
 	testData.data = testData.data:reshape(tesize,3,32,32)
 
-	-- -- create val data
-	-- idx = torch.randperm(trsize)
-	-- tr_idx = idx[{ {1,math.floor(trsize*0.9)}   }]
-	-- val_idx = idx[{  {math.floor(trsize*0.9)+1,trsize}   }]
-	-- ValData = {}
-	-- ValData.data = trainData.data:index(1,val_idx:long())
-	-- ValData.labels = trainData.labels:index(1,val_idx:long())
-	-- print(ValData)
+	-- create val data
+	idx = torch.randperm(trsize)
+	tr_idx = idx[{ {1,math.floor(trsize*0.9)}   }]
+	val_idx = idx[{  {math.floor(trsize*0.9)+1,trsize}   }]
+	valData = {}
+	valData.data = trainData.data:index(1,val_idx:long())
+	valData.labels = trainData.labels:index(1,val_idx:long())
 
-	-- trainData.data = trainData.data:index(1,tr_idx:long())
-	-- trainData.labels = trainData.labels:index(1,tr_idx:long())
+	trainData.data = trainData.data:index(1,tr_idx:long())
+	trainData.labels = trainData.labels:index(1,tr_idx:long())
 
-	-- trsize = tr_idx:size(1)
-	-- valsize = val_idx:size(1)
-	-- return trainData, ValData, testData
+	trsize = tr_idx:size(1)
+	valsize = val_idx:size(1)
+	return trainData, valData, testData
 
-	return trainData, testData
 end
 
 
 function train(options, trainData, testData, preprocess)
-	
-
 	-- 1. Training (or loading) PCANet
 	local timer = torch.Timer() -- the Timer starts to count now
 
-	if not paths.filep("pcanet.t7") then
+	if not paths.filep("model/pcanet.t7") then
 		pcanet = PCANet(options) -- create a PCANet instance
 		timer:reset()
 		print ('Training PCANet')
 		pcanet:PCANet_train(trainData.data,options.MaxSamples)
 		print('Time elapsed for training PCA Filters: ' .. timer:time().real .. ' seconds')
 		print("saving the PCANet instance")
-		torch.save("pcanet.t7",pcanet)
+		torch.save("model/pcanet.t7",pcanet)
 	else
 		print ("loading PCA Filters")
 		pcanet = torch.load("pcanet.t7")
@@ -94,19 +91,25 @@ function train(options, trainData, testData, preprocess)
 	-- print (pcanet.HistBlockSize)
 
 	-- try 1 img to get the dim of input of the NN
-	local tmpf = pcanet:PCANet_FeaExt_single_input(torch.randn(1,3,32,32))
-	local nInputDim = tmpf:size(1)
+
+	if options.model == 'SVM' then
+		local tmpf = pcanet:PCANet_FeaExt_single_input(torch.randn(1,3,32,32))
+		local nInputDim = tmpf:size(1)
+	else
+		-- local tmpf = pcanet:PCANet_FeaExt_single_input(torch.randn(1,3,32,32))
+		-- local nInputDim = tmpf:size(1)
+	end
 
 
 	-- 2. training the classifier
 	if not paths.filep("model/classifier.t7") then
-		classifier = Classifier(options)
+		clf = Classifier(options,nInputDim) 
 	else
-		print ("loading " .. "`add names`" .. "...")
-		classifier = torch.load("model/classifier.t7")
+		print ("loading the trained " .. options.model .. "...")
+		clf = torch.load("model/classifier.t7")
 	end
-	net = classifier.net
-
+	net = clf.net
+	criterion = clf.criterion
 	timer:reset()
 	print ("training...")
 
@@ -136,7 +139,7 @@ function train(options, trainData, testData, preprocess)
                 img_batch_i[bi] = trainData.data[i]
                 labels[bi] = trainData.labels[rand_id]
             end
-            inputs = pcanet:PCANet_FeaExt(img_batch_i)
+            local inputs = pcanet:PCANet_FeaExt(img_batch_i):div(255)
             assert(inputs:size(2)==nInputDim,"dim not match")
 
             -- print ("1.2 Perform the forward pass (prediction mode).")
@@ -171,20 +174,20 @@ function train(options, trainData, testData, preprocess)
         end
 
         
-        -- print("after each epoch, evaluate the accuracy for the val data")
-        -- local validation_accuracy = 0
-        -- net:evaluate() -- turn on the evaluation mode
+        print("after each epoch, evaluate the accuracy for the val data")
+        local validation_accuracy = 0
+        net:evaluate() -- turn on the evaluation mode
 
-        -- -- Perform the forward pass (prediction mode).
-        -- local predictions = net:forward(pcanet:PCANet_FeaExt(ValData.data))
-        -- -- evaluate results.
-        -- for i = 1, predictions:size(1) do
-        --     local _, predicted_label = predictions[i]:max(1)
-        --     if predicted_label[1] == ValData.labels[i] then validation_accuracy = validation_accuracy + 1 end
-        -- end
+        -- Perform the forward pass (prediction mode).
+        local predictions = net:forward(pcanet:PCANet_FeaExt(valData.data):div(255))
+        -- evaluate results.
+        for i = 1, predictions:size(1) do
+            local _, predicted_label = predictions[i]:max(1)
+            if predicted_label[1] == valData.labels[i] then validation_accuracy = validation_accuracy + 1 end
+        end
 
-        -- validation_accuracy = validation_accuracy / (ValData.data:size(1))
-        -- print(('\n validation accuracy at epoch = %d is %.4f'):format(epoch, validation_accuracy))
+        validation_accuracy = validation_accuracy / (valData.data:size(1))
+        print(('\n validation accuracy at epoch = %d is %.4f'):format(epoch, validation_accuracy))
 
 
         
@@ -220,9 +223,9 @@ end
 
 
 function main(options)
-	trainData, ValData, testData = load_data(500,100)
+	trainData, valData, testData = load_data()
 	-- print (trainData)
-	train(options, trainData, ValData, testData)
+	train(options, trainData, valData, testData)
 end
 
 
