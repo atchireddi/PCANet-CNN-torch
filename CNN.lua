@@ -11,13 +11,13 @@ model:add(nn.ReLU())
 model:add(nn.SpatialMaxPooling(2, 2, 2, 2)) -- Max pooling in 2 x 2 area.
 model:add(nn.SpatialConvolution(8, 16, 5, 5))  -- 8 input channels, 16 output channels (16 filters), 5x5 kernels.
 model:add(nn.SpatialBatchNormalization(16, 1e-3))  -- BATCH NORMALIZATION LAYER.
-model:add(nn.ReLU())                      
+model:add(nn.ReLU())
 model:add(nn.SpatialMaxPooling(2, 2, 2, 2))  -- Max pooling in 2 x 2 area.
 model:add(nn.View(16*5*5))    -- Vectorize the output of the convolutional layers.
 model:add(nn.Linear(16*5*5, 120))
 model:add(nn.ReLU())
 model:add(nn.Linear(120, 84))
-model:add(nn.ReLU())  
+model:add(nn.ReLU())
 model:add(nn.Linear(84, 10))
 model:add(nn.LogSoftMax())
 
@@ -134,7 +134,7 @@ function trainModel(model, opt, trainData, valData, testData, preprocessFn)
     local batchSize = opt.batchSize or 64  -- The bigger the batch size the most accurate the gradients.
     local learningRate = opt.learningRate or 0.001  -- This is the learning rate parameter often referred to as lambda.
     local momentumRate = opt.momentumRate or 0.9
-    local numEpochs = opt.numEpochs or 5
+    local numEpochs = opt.numEpochs or 1000
     local velocityParams = torch.zeros(gradParams:size())
     local train_features, val_features, test_features
 
@@ -146,6 +146,10 @@ function trainModel(model, opt, trainData, valData, testData, preprocessFn)
 
     -- Go over the training data this number of times.
     for epoch = 1, numEpochs do
+	if epoch%10 ==0 and learningRate>=0.00001 then 
+	    learningRate = learningRate * 0.95
+	print ("learningRate is ".. learningRate .. "after" .. epoch .. "epochs") 
+	end
         local sum_loss = 0
         local correct = 0
         
@@ -193,13 +197,13 @@ function trainModel(model, opt, trainData, valData, testData, preprocessFn)
             velocityParams:add(learningRate, gradParams)
             params:add(-1, velocityParams)
 
-            if i % 100 == 0 then  -- Print this every five thousand iterations.
+            if i % 700 == 0 then  -- Print this every five thousand iterations.
                 print(('train epoch=%d, iteration=%d, avg-loss=%.6f, avg-accuracy = %.4f')
                     :format(epoch, i, sum_loss / i, correct / (i * batchSize)))
             end
             xlua.progress(i,n_batches)
         end
-        if epoch % 5==0 then
+        if epoch % 100==0 then
         	torch.save("model/CNN-epoch" ..  epoch ..".t7", model)
         end
 
