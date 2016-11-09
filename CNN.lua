@@ -265,5 +265,4 @@ end
 
 trainData, valData, testData = load_data()
 print (trainData, valData, testData)
-
 trainModel(model,nil,trainData, valData, testData)

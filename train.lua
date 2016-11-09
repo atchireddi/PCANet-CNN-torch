@@ -85,14 +85,14 @@ function train(options, trainData, testData, preprocess)
 		torch.save("model/pcanet.t7",pcanet)
 	else
 		print ("loading PCA Filters")
-		pcanet = torch.load("pcanet.t7")
+		pcanet = torch.load("model/pcanet.t7")
 	end
 	-- print (pcanet.V)
 	-- print (pcanet.HistBlockSize)
 
 	-- try 1 img to get the dim of input of the NN
 
-	if options.model == 'SVM' then
+	if options.model == 'Linear' then
 		local tmpf = pcanet:PCANet_FeaExt_single_input(torch.randn(1,3,32,32))
 		local nInputDim = tmpf:size(1)
 	else
@@ -196,7 +196,7 @@ function train(options, trainData, testData, preprocess)
         options.learning_rate = math.max(options.learning_rate,0.0001)
 
         if epoch % 5==0 then
-        	torch.save("model.t7",model)
+        	torch.save("model/model.t7",model)
         end
         collectgarbage()
     end
@@ -250,7 +250,7 @@ cmd:option('-BlkOverLapRatio',0.5, '')
 cmd:option('MaxSamples',100000)
 
 -- model 
-cmd:option('-model','SVM', 'either SVM or CNN')
+cmd:option('-model','Linear', 'either Linear or CNN')
 
 -- optimization
 cmd:option('-learning_rate',1,'starting learning rate')
