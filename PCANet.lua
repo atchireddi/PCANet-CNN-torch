@@ -160,7 +160,7 @@ function PCANet:HashingHist(OutImg)
 
                 -- local patch_ij = output[{  {l},{},{ starti,endi  }  ,{startj,endj}  }]:clone() -- the ij th patch
                 local patch_ij = output[{  {l},{},{ starti,endi  }  ,{startj,endj}  }]
-                local f_ij = torch.histc(patch_ij, histsize, 0, histsize-1)      -- the feature of ij the patch
+                local f_ij = torch.histc(patch_ij, 32, 0, histsize-1)      -- the feature of ij the patch
                 if not f then
                     f = f_ij
                 else

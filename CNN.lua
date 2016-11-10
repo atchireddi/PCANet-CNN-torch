@@ -134,7 +134,7 @@ function trainModel(model, opt, trainData, valData, testData, preprocessFn)
     local batchSize = opt.batchSize or 64  -- The bigger the batch size the most accurate the gradients.
     local learningRate = opt.learningRate or 0.001  -- This is the learning rate parameter often referred to as lambda.
     local momentumRate = opt.momentumRate or 0.9
-    local numEpochs = opt.numEpochs or 1000
+    local numEpochs = opt.numEpochs or 500
     local velocityParams = torch.zeros(gradParams:size())
     local train_features, val_features, test_features
 
