@@ -204,7 +204,7 @@ function train_classifier(options, train_features, val_features, test_features, 
         
         -- Run over the training set samples.
         model:training() -- turn on the training mode
-        local n_batches = train_features:size(1) / batch_size
+        local n_batches = math.floor(train_features:size(1) / batch_size)
         for i = 1, n_batches do
             
             -- 1. Sample a batch.
@@ -241,14 +241,16 @@ function train_classifier(options, train_features, val_features, test_features, 
             velocityParams:add(learning_rate, gradParams)
             params:add(-1, velocityParams)
 
-            if i % 700 == 0 then  -- Print this every five thousand iterations.
+            if i == n_batches then  -- Print
                 print(('train epoch=%d, iteration=%d, avg-loss=%.4f, avg-accuracy = %.2f')
                     :format(epoch, i, sum_loss / i, correct / (i * batch_size)))
             end
             xlua.progress(i,n_batches)
         end
-        if epoch % 100==0 then
-          torch.save("model/Linear.t7", model)
+
+        -- save_every
+        if epoch % options.save_every==0 then
+          torch.save("model/Linear-".. epoch ..".t7", model)
         end
 
 
@@ -358,18 +360,14 @@ cmd:option('-BlkOverLapRatio',0.5, '')
 cmd:option('MaxSamples',100000)
 
 
--- model
-cmd:option('-model','SVM', 'either SVM or CNN')
-
-
 -- optimization
-cmd:option('-learning_rate',1,'starting learning rate')
+cmd:option('-learning_rate',0.001,'starting learning rate')
 cmd:option('-momentum_rate',0.9,'momentum rate')
 cmd:option('-learning_rate_decay',0.9,'learning rate decay')
 -- cmd:option('-decay_when',1,'decay if validation perplexity does not improve by more than this much')
 -- cmd:option('-param_init', 0.05, 'initialize parameters at')
 cmd:option('-batch_norm', 0, 'use batch normalization over input embeddings (1=yes)')
-cmd:option('-batch_size',20,'number of sequences to train on in parallel')
+cmd:option('-batch_size',64,'number of sequences to train on in parallel')
 cmd:option('-max_epochs',100,'number of full passes through the training data')
 
 
@@ -377,7 +375,7 @@ cmd:option('-max_epochs',100,'number of full passes through the training data')
 -- bookkeeping
 cmd:option('-seed',3435,'torch manual random number generator seed')
 -- cmd:option('-print_every',500,'how many steps/minibatches between printing out the loss')
--- cmd:option('-save_every', 5, 'save every n epochs')
+cmd:option('-save_every', 50, 'save every n epochs')
 -- cmd:option('-checkpoint_dir', 'cv', 'output directory where checkpoints get written')
 -- cmd:option('-savefile','char','filename to autosave the checkpont to. Will be inside checkpoint_dir/')
 
