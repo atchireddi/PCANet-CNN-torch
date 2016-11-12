@@ -3,7 +3,7 @@ require 'PCANet'
 local xlua = require 'xlua'
 local util = require "util"
 local nn = require 'nn'
-
+require 'image'
 
 
 
@@ -102,6 +102,9 @@ function train_PCA(options, trainData, valData, testData)
      	 pcanet = torch.load("model/pcanet.t7")
     end
 
+    local V = pcanet.V[1]:clone()
+    V:resize(options.NumFilters[1],3,options.kW,options.kH)
+    torch.save("output/PCA_filters.t7",V)
 
     -- extract the features of train, val, and test data
 
@@ -329,16 +332,16 @@ function main(options)
     train_PCA(options, trainData, valData, testData)
 
 
-    print ("loading features")
-    local timer = torch.Timer() 
-    timer:reset()
-    train_features = torch.load("features/train_features.t7")
-    val_features = torch.load("features/val_features.t7")
-    test_features = torch.load("features/test_features.t7")
-    labels = torch.load("features/labels.t7")
-    print('Time elapsed for loading features: ' .. timer:time().real .. ' seconds')
+    -- print ("loading features")
+    -- local timer = torch.Timer() 
+    -- timer:reset()
+    -- train_features = torch.load("features/train_features.t7")
+    -- val_features = torch.load("features/val_features.t7")
+    -- test_features = torch.load("features/test_features.t7")
+    -- labels = torch.load("features/labels.t7")
+    -- print('Time elapsed for loading features: ' .. timer:time().real .. ' seconds')
 
-    train_classifier(options, train_features, val_features, test_features, labels)
+    -- train_classifier(options, train_features, val_features, test_features, labels)
 end
 
 
