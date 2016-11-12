@@ -196,8 +196,10 @@ function train_classifier(options, train_features, val_features, test_features, 
 
     preprocessFn = false
 
+    local val_acc_list = {}
+
     -- Go over the training data this number of times.
-  for epoch = 1, max_epochs do
+    for epoch = 1, max_epochs do
 
         local sum_loss = 0
         local correct = 0
@@ -295,6 +297,7 @@ function train_classifier(options, train_features, val_features, test_features, 
         print ("learning_rate is ".. learning_rate .. "after" .. epoch .. "epochs") 
       end
 
+      table.insert(val_acc_list,validation_accuracy)
     end -- for epoch = 1, max_epochs do
 
     print ("------------------------------------------test time------------------------------------------")
@@ -313,6 +316,10 @@ function train_classifier(options, train_features, val_features, test_features, 
     test_accuracy = test_accuracy / test_features:size(1)
     print(('\ntest accuracy is %.4f'):format(test_accuracy))
 
+    local results = {}
+    results.test_accuracy = test_accuracy
+    results.val_acc_list = val_acc_list
+    torch.save("output/PCANet_result.t7",results)
 end
 
 
@@ -332,7 +339,6 @@ function main(options)
     print('Time elapsed for loading features: ' .. timer:time().real .. ' seconds')
 
     train_classifier(options, train_features, val_features, test_features, labels)
-
 end
 
 

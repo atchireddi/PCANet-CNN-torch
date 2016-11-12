@@ -126,15 +126,15 @@ function load_data(trsize,tesize)
 	-- return trainData, testData
 end
 
-function trainModel(model, opt, trainData, valData, testData, preprocessFn)
+function trainModel(model, options, trainData, valData, testData, preprocessFn)
     -- Get all the parameters (and gradients) of the model in a single vector.
     local params, gradParams = model:getParameters() -- return 2 tensors
 
-    local opt = opt or {}
-    local batchSize = opt.batchSize or 64  -- The bigger the batch size the most accurate the gradients.
-    local learningRate = opt.learningRate or 0.001  -- This is the learning rate parameter often referred to as lambda.
-    local momentumRate = opt.momentumRate or 0.9
-    local numEpochs = opt.numEpochs or 100
+    local options = options or {}
+    local batchSize = options.batchSize or 64  -- The bigger the batch size the most accurate the gradients.
+    local learningRate = options.learningRate or 0.001  -- This is the learning rate parameter often referred to as lambda.
+    local momentumRate = options.momentumRate or 0.9
+    local numEpochs = options.numEpochs or 100
     local velocityParams = torch.zeros(gradParams:size())
     local train_features, val_features, test_features
 
@@ -144,10 +144,12 @@ function trainModel(model, opt, trainData, valData, testData, preprocessFn)
 
     preprocessFn = false
 
+    local val_acc_list = {}
+
     -- Go over the training data this number of times.
     for epoch = 1, numEpochs do
-	if epoch%10 ==0 and learningRate>=0.00001 then 
-	    learningRate = learningRate * 0.95
+	if epoch % 10 ==0 and learningRate>=0.00001 then 
+	    learningRate = learningRate * 0.9
 	print ("learningRate is ".. learningRate .. "after" .. epoch .. "epochs") 
 	end
         local sum_loss = 0
@@ -155,7 +157,7 @@ function trainModel(model, opt, trainData, valData, testData, preprocessFn)
         
         -- Run over the training set samples.
         model:training() -- turn on the training mode
-        local n_batches = trainData.normdata:size(1) / batchSize
+        local n_batches = math.floor(trainData.normdata:size(1) / batchSize)
         for i = 1, n_batches do
             
             -- 1. Sample a batch.
@@ -197,7 +199,7 @@ function trainModel(model, opt, trainData, valData, testData, preprocessFn)
             velocityParams:add(learningRate, gradParams)
             params:add(-1, velocityParams)
 
-            if i % 700 == 0 then  -- Print this every five thousand iterations.
+            if i % n_batches == 0 then  -- Print this every five thousand iterations.
                 print(('train epoch=%d, iteration=%d, avg-loss=%.6f, avg-accuracy = %.4f')
                     :format(epoch, i, sum_loss / i, correct / (i * batchSize)))
             end
@@ -242,6 +244,9 @@ function trainModel(model, opt, trainData, valData, testData, preprocessFn)
         end
         validation_accuracy = validation_accuracy / (nBatches * batchSize)
         print(('\nvalidation accuracy at epoch = %d is %.4f'):format(epoch, validation_accuracy))
+
+        table.insert(val_acc_list,validation_accuracy)
+
     end -- for epoch = 1, numEpochs do
 
     print ("------------------------------------------test time------------------------------------------")
@@ -260,9 +265,17 @@ function trainModel(model, opt, trainData, valData, testData, preprocessFn)
 
     test_accuracy = test_accuracy / test_features:size(1)
     print(('\ntest accuracy is %.4f'):format(test_accuracy))
+
+    local results = {}
+    results.test_accuracy = test_accuracy
+    results.val_acc_list = val_acc_list
+    torch.save("output/CNN_result.t7",results)
 end
 
+function main()
+    trainData, valData, testData = load_data()
+    print (trainData, valData, testData)
+    trainModel(model,nil, trainData, valData, testData)
+end
 
-trainData, valData, testData = load_data()
-print (trainData, valData, testData)
-trainModel(model,nil,trainData, valData, testData)
+main()
