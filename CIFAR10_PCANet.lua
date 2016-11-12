@@ -332,16 +332,16 @@ function main(options)
     train_PCA(options, trainData, valData, testData)
 
 
-    -- print ("loading features")
-    -- local timer = torch.Timer() 
-    -- timer:reset()
-    -- train_features = torch.load("features/train_features.t7")
-    -- val_features = torch.load("features/val_features.t7")
-    -- test_features = torch.load("features/test_features.t7")
-    -- labels = torch.load("features/labels.t7")
-    -- print('Time elapsed for loading features: ' .. timer:time().real .. ' seconds')
+    print ("loading features")
+    local timer = torch.Timer() 
+    timer:reset()
+    train_features = torch.load("features/train_features.t7")
+    val_features = torch.load("features/val_features.t7")
+    test_features = torch.load("features/test_features.t7")
+    labels = torch.load("features/labels.t7")
+    print('Time elapsed for loading features: ' .. timer:time().real .. ' seconds')
 
-    -- train_classifier(options, train_features, val_features, test_features, labels)
+    train_classifier(options, train_features, val_features, test_features, labels)
 end
 
 
