@@ -33,8 +33,15 @@ function train_classifier(opt, train_features, val_features, test_features, labe
 
     -- train
     local model = nn.Sequential()
-	model:add(nn.Linear(p, 10))
-	model:add(nn.LogSoftMax())
+	model:add(nn.Linear(p, 1024))
+    model:add(nn.ReLU())
+    model:add(nn.Dropout(0.5))
+    model:add(nn.Linear(1024, 128))
+    model:add(nn.ReLU())
+    model:add(nn.Dropout(0.5))
+    model:add(nn.Linear(128, 10))
+    model:add(nn.LogSoftMax())
+    -- model:cuda()
 	local criterion = nn.ClassNLLCriterion() -- Negative log-likelihood criterion.
 	
 
@@ -117,7 +124,7 @@ function train_classifier(opt, train_features, val_features, test_features, labe
             if preprocessFn then
                 -- inputs = torch.Tensor(batchSize, 3, 224, 224)
             else
-                inputs = torch.Tensor(batchSize, 3, 32, 32)
+                inputs = torch.Tensor(batchSize, p)
             end
             local labels = torch.Tensor(batchSize)
             for bi = 1, batchSize do

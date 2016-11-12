@@ -1,6 +1,5 @@
 local PCANet = torch.class('PCANet')
 local xlua = require "xlua"
-local list = require "pl.List"
 local util = require "util"
 
 function PCANet:__init(options)
