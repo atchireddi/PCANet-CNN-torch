@@ -5,20 +5,25 @@ require 'xlua'
 torch.setdefaulttensortype('torch.FloatTensor')
 
 local model = nn.Sequential()
-model:add(nn.SpatialConvolution(3, 8, 5, 5))  -- 3 input channels, 8 output channels (8 filters), 5x5 kernels.
-model:add(nn.SpatialBatchNormalization(8, 1e-3))  -- BATCH NORMALIZATION LAYER.
+model:add(nn.SpatialConvolution(3, 32, 5, 5))  -- 3 input channels, 8 output channels (8 filters), 5x5 kernels.
+model:add(nn.SpatialBatchNormalization(32, 1e-3))  -- BATCH NORMALIZATION LAYER.
 model:add(nn.ReLU())
 model:add(nn.SpatialMaxPooling(2, 2, 2, 2)) -- Max pooling in 2 x 2 area.
-model:add(nn.SpatialConvolution(8, 16, 5, 5))  -- 8 input channels, 16 output channels (16 filters), 5x5 kernels.
-model:add(nn.SpatialBatchNormalization(16, 1e-3))  -- BATCH NORMALIZATION LAYER.
+model:add(nn.SpatialConvolution(32, 64, 5, 5))  -- 8 input channels, 16 output channels (16 filters), 5x5 kernels.
+model:add(nn.SpatialBatchNormalization(64, 1e-3))  -- BATCH NORMALIZATION LAYER.
 model:add(nn.ReLU())
 model:add(nn.SpatialMaxPooling(2, 2, 2, 2))  -- Max pooling in 2 x 2 area.
+model:add(nn.SpatialConvolution(64, 16, 1, 1))  -- 8 input channels, 16 output channels (16 filters), 5x5 kernels.
+model:add(nn.SpatialBatchNormalization(16, 1e-3))  -- BATCH NORMALIZATION LAYER.
+model:add(nn.ReLU())
 model:add(nn.View(16*5*5))    -- Vectorize the output of the convolutional layers.
-model:add(nn.Linear(16*5*5, 120))
+model:add(nn.Linear(16*5*5, 1024))
 model:add(nn.ReLU())
-model:add(nn.Linear(120, 84))
+model:add(nn.Dropout(0.5))
+model:add(nn.Linear(1024, 128))
 model:add(nn.ReLU())
-model:add(nn.Linear(84, 10))
+model:add(nn.Dropout(0.5))
+model:add(nn.Linear(128, 10))
 model:add(nn.LogSoftMax())
 
 local criterion = nn.ClassNLLCriterion() -- Negative log-likelihood criterion.
@@ -105,11 +110,13 @@ function load_data(trsize,tesize)
     -- Print the mean and std value for each channel.
 	print(cifarMean)
 	print(cifarStd)
-    cifarInfo = {}
-    cifarInfo.mean = cifarMean
-    cifarInfo.std = cifarStd
-    torch.save("model/cifarInfo.t7",cifarInfo)
 
+    if not paths.dirp('cifar-10-batches-t7') then 
+        cifarInfo = {}
+        cifarInfo.mean = cifarMean
+        cifarInfo.std = cifarStd
+        torch.save("model/cifarInfo.t7",cifarInfo)
+    end
 	-- Now normalize the training and validation data.
 	for i  = 1, 3 do
 	    -- Subtracting the mean on each channel makes the values roughly between -128 and 128.
@@ -210,7 +217,7 @@ function trainModel(model, options, trainData, valData, testData, preprocessFn)
             xlua.progress(i,n_batches)
         end
         if epoch % 100==0 then
-        	torch.save("model/CNN-epoch" ..  epoch ..".t7", model)
+        	torch.save("model/DCNN-epoch" ..  epoch ..".t7", model)
         end
 
 
@@ -273,7 +280,7 @@ function trainModel(model, options, trainData, valData, testData, preprocessFn)
     local results = {}
     results.test_accuracy = test_accuracy
     results.val_acc_list = val_acc_list
-    torch.save("output/CNN_result.t7",results)
+    torch.save("output/DCNN_result.t7",results)
 end
 
 function main()
