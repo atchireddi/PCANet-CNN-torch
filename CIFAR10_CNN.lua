@@ -105,6 +105,10 @@ function load_data(trsize,tesize)
     -- Print the mean and std value for each channel.
 	print(cifarMean)
 	print(cifarStd)
+    cifarInfo = {}
+    cifarInfo.mean = cifarMean
+    cifarInfo.std = cifarStd
+    torch.save("model/cifarInfo.t7",cifarInfo)
 
 	-- Now normalize the training and validation data.
 	for i  = 1, 3 do
@@ -279,3 +283,4 @@ function main()
 end
 
 main()
+-- load_data()
